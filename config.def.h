@@ -1,0 +1,299 @@
+/* See LICENSE file for copyright and license details. */
+
+/* Constants */
+#define TERMINAL "alacritty"
+#define TERMCLASS "alacritty"	
+#define BROWSER "firefox"
+#define SHCMD(cmd) { .v = (const char*[]){ "/bin/sh", "-c", cmd, NULL } }
+#include <X11/XF86keysym.h> 
+static const char *termcmd[]  = { "alacritty", NULL };
+
+/* Appearance */
+static const unsigned int borderpx       = 1;   /* border pixel of windows */
+static const unsigned int snap           = 32;  /* snap pixel */
+static const int showbar                 = 1;   /* 0 means no bar */
+static const int topbar                  = 1;   /* 0 means bottom bar */
+/* Status is to be shown on: -1 (all monitors), 0 (a specific monitor by index), 'A' (active monitor) */
+static const int statusmon               = 'A';
+
+/* Indicators: see patch/bar_indicators.h for options */
+static int tagindicatortype              = INDICATOR_TOP_LEFT_SQUARE;
+static int tiledindicatortype            = INDICATOR_NONE;
+static int floatindicatortype            = INDICATOR_TOP_LEFT_SQUARE;
+static const char *fonts[]               = { "Fantasque Sans Mono:size=12" };
+static const char dmenufont[]            = "Fantasque Sans Mono:size=12";
+
+static char c000000[]                    = "#000000"; // placeholder value
+
+static char normfgcolor[]                = "#bbbbbb";
+static char normbgcolor[]                = "#222222";
+static char normbordercolor[]            = "#444444";
+static char normfloatcolor[]             = "#db8fd9";
+
+static char selfgcolor[]                 = "#eeeeee";
+static char selbgcolor[]                 = "#005577";
+static char selbordercolor[]             = "#005577";
+static char selfloatcolor[]              = "#005577";
+
+static char titlenormfgcolor[]           = "#bbbbbb";
+static char titlenormbgcolor[]           = "#222222";
+static char titlenormbordercolor[]       = "#444444";
+static char titlenormfloatcolor[]        = "#db8fd9";
+
+static char titleselfgcolor[]            = "#eeeeee";
+static char titleselbgcolor[]            = "#005577";
+static char titleselbordercolor[]        = "#005577";
+static char titleselfloatcolor[]         = "#005577";
+
+static char tagsnormfgcolor[]            = "#bbbbbb";
+static char tagsnormbgcolor[]            = "#222222";
+static char tagsnormbordercolor[]        = "#444444";
+static char tagsnormfloatcolor[]         = "#db8fd9";
+
+static char tagsselfgcolor[]             = "#eeeeee";
+static char tagsselbgcolor[]             = "#005577";
+static char tagsselbordercolor[]         = "#005577";
+static char tagsselfloatcolor[]          = "#005577";
+
+static char hidnormfgcolor[]             = "#005577";
+static char hidselfgcolor[]              = "#227799";
+static char hidnormbgcolor[]             = "#222222";
+static char hidselbgcolor[]              = "#222222";
+
+static char urgfgcolor[]                 = "#bbbbbb";
+static char urgbgcolor[]                 = "#222222";
+static char urgbordercolor[]             = "#ff0000";
+static char urgfloatcolor[]              = "#db8fd9";
+
+static const unsigned int baralpha = 0xd0;
+static const unsigned int borderalpha = OPAQUE;
+static const unsigned int alphas[][3] = {
+	/*                       fg      bg        border     */
+	[SchemeNorm]         = { OPAQUE, baralpha, borderalpha },
+	[SchemeSel]          = { OPAQUE, baralpha, borderalpha },
+	[SchemeTitleNorm]    = { OPAQUE, baralpha, borderalpha },
+	[SchemeTitleSel]     = { OPAQUE, baralpha, borderalpha },
+	[SchemeTagsNorm]     = { OPAQUE, baralpha, borderalpha },
+	[SchemeTagsSel]      = { OPAQUE, baralpha, borderalpha },
+	[SchemeHidNorm]      = { OPAQUE, baralpha, borderalpha },
+	[SchemeHidSel]       = { OPAQUE, baralpha, borderalpha },
+	[SchemeUrg]          = { OPAQUE, baralpha, borderalpha },
+};
+
+static char *colors[][ColCount] = {
+	/*                       fg                bg                border                float */
+	[SchemeNorm]         = { normfgcolor,      normbgcolor,      normbordercolor,      normfloatcolor },
+	[SchemeSel]          = { selfgcolor,       selbgcolor,       selbordercolor,       selfloatcolor },
+	[SchemeTitleNorm]    = { titlenormfgcolor, titlenormbgcolor, titlenormbordercolor, titlenormfloatcolor },
+	[SchemeTitleSel]     = { titleselfgcolor,  titleselbgcolor,  titleselbordercolor,  titleselfloatcolor },
+	[SchemeTagsNorm]     = { tagsnormfgcolor,  tagsnormbgcolor,  tagsnormbordercolor,  tagsnormfloatcolor },
+	[SchemeTagsSel]      = { tagsselfgcolor,   tagsselbgcolor,   tagsselbordercolor,   tagsselfloatcolor },
+	[SchemeHidNorm]      = { hidnormfgcolor,   hidnormbgcolor,   c000000,              c000000 },
+	[SchemeHidSel]       = { hidselfgcolor,    hidselbgcolor,    c000000,              c000000 },
+	[SchemeUrg]          = { urgfgcolor,       urgbgcolor,       urgbordercolor,       urgfloatcolor },
+};
+
+
+/* Tags
+ * In a traditional dwm the number of tags in use can be changed simply by changing the number
+ * of strings in the tags array. This build does things a bit different which has some added
+ * benefits. If you need to change the number of tags here then change the NUMTAGS macro in dwm.c.
+ *
+ * Examples:
+ *
+ *  1) static char *tagicons[][NUMTAGS*2] = {
+ *         [DEFAULT_TAGS] = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "G", "H", "I" },
+ *     }
+ *
+ *  2) static char *tagicons[][1] = {
+ *         [DEFAULT_TAGS] = { "•" },
+ *     }
+ *
+ * The first example would result in the tags on the first monitor to be 1 through 9, while the
+ * tags for the second monitor would be named A through I. A third monitor would start again at
+ * 1 through 9 while the tags on a fourth monitor would also be named A through I. Note the tags
+ * count of NUMTAGS*2 in the array initialiser which defines how many tag text / icon exists in
+ * the array. This can be changed to *3 to add separate icons for a third monitor.
+ *
+ * For the second example each tag would be represented as a bullet point. Both cases work the
+ * same from a technical standpoint - the icon index is derived from the tag index and the monitor
+ * index. If the icon index is is greater than the number of tag icons then it will wrap around
+ * until it an icon matches. Similarly if there are two tag icons then it would alternate between
+ * them. This works seamlessly with alternative tags and alttagsdecoration patches.
+ */
+static char *tagicons[][NUMTAGS] =
+{
+	[DEFAULT_TAGS]        = { "home", "work", "sys" },
+	[ALTERNATIVE_TAGS]    = { "A", "B", "C" },
+	[ALT_TAGS_DECORATION] = { "<1>", "<2>", "<3>" },
+};
+
+
+/* There are two options when it comes to per-client rules:
+ *  - a typical struct table or
+ *  - using the RULE macro
+ *
+ * A traditional struct table looks like this:
+ *    // class      instance  title  wintype  tags mask  isfloating  monitor
+ *    { "Gimp",     NULL,     NULL,  NULL,    1 << 4,    0,          -1 },
+ *    { "Firefox",  NULL,     NULL,  NULL,    1 << 7,    0,          -1 },
+ *
+ * The RULE macro has the default values set for each field allowing you to only
+ * specify the values that are relevant for your rule, e.g.
+ *
+ *    RULE(.class = "Gimp", .tags = 1 << 4)
+ *    RULE(.class = "Firefox", .tags = 1 << 7)
+ *
+ * Refer to the Rule struct definition for the list of available fields depending on
+ * the patches you enable.
+ */
+static const Rule rules[] = {
+	/* xprop(1):
+	 *	WM_CLASS(STRING) = instance, class
+	 *	WM_NAME(STRING) = title
+	 *	WM_WINDOW_ROLE(STRING) = role
+	 *	_NET_WM_WINDOW_TYPE(ATOM) = wintype
+	 */
+	RULE(.wintype = WTYPE "DIALOG", .isfloating = 1)
+	RULE(.wintype = WTYPE "UTILITY", .isfloating = 1)
+	RULE(.wintype = WTYPE "TOOLBAR", .isfloating = 1)
+	RULE(.wintype = WTYPE "SPLASH", .isfloating = 1)
+	RULE(.class = "Gimp", .tags = 1 << 4)
+	RULE(.class = "Firefox", .tags = 1 << 7)
+};
+
+
+/* Bar rules allow you to configure what is shown where on the bar, as well as
+ * introducing your own bar modules.
+ *
+ *    monitor:
+ *      -1  show on all monitors
+ *       0  show on monitor 0
+ *      'A' show on active monitor (i.e. focused / selected) (or just -1 for active?)
+ *    bar - bar index, 0 is default, 1 is extrabar
+ *    alignment - how the module is aligned compared to other modules
+ *    widthfunc, drawfunc, clickfunc - providing bar module width, draw and click functions
+ *    name - does nothing, intended for visual clue and for logging / debugging
+ */
+static const BarRule barrules[] = {
+	/* monitor   bar    alignment         widthfunc                 drawfunc                clickfunc                hoverfunc                name */
+	{ -1,        0,     BAR_ALIGN_LEFT,   width_tags,               draw_tags,              click_tags,              hover_tags,              "tags" },
+	{ -1,        0,     BAR_ALIGN_LEFT,   width_ltsymbol,           draw_ltsymbol,          click_ltsymbol,          NULL,                    "layout" },
+	{ statusmon, 0,     BAR_ALIGN_RIGHT,  width_status,             draw_status,            click_statuscmd,         NULL,                    "status" },
+	{ -1,        0,     BAR_ALIGN_NONE,   width_awesomebar,         draw_awesomebar,        click_awesomebar,        NULL,                    "awesomebar" },
+};
+
+/* Layout(s) */
+static const float mfact     = 0.55; /* factor of master area size [0.05..0.95] */
+static const int nmaster     = 1;    /* number of clients in master area */
+static const int resizehints = 0;    /* 1 means respect size hints in tiled resizals */
+static const int lockfullscreen = 1; /* 1 will force focus on the fullscreen window */
+
+
+static const Layout layouts[] = {
+	/* symbol     arrange function */
+	{ "[]=",      tile },    /* first entry is default */
+	{ "><>",      NULL },    /* no layout function means floating behavior */
+	{ "[M]",      monocle },
+};
+
+
+/* Key definitions */
+#define MODKEY Mod1Mask
+#define TAGKEYS(KEY,TAG) \
+	{ MODKEY,                       KEY,      view,           {.ui = 1 << TAG} }, \
+	{ MODKEY|ControlMask,           KEY,      toggleview,     {.ui = 1 << TAG} }, \
+	{ MODKEY|ShiftMask,             KEY,      tag,            {.ui = 1 << TAG} }, \
+	{ MODKEY|ControlMask|ShiftMask, KEY,      toggletag,      {.ui = 1 << TAG} },
+
+
+/* Commands */
+static char dmenumon[2] = "0"; /* component of dmenucmd, manipulated in spawn() */
+static const char *dmenucmd[] = {
+	"dmenu_run",
+	"-m", dmenumon,
+	"-fn", dmenufont,
+	"-nb", normbgcolor,
+	"-nf", normfgcolor,
+	"-sb", selbgcolor,
+	"-sf", selfgcolor,
+	NULL
+};
+
+/* This defines the name of the executable that handles the bar (used for signalling purposes) */
+#define STATUSBAR "dwmblocks"
+
+/* button definitions */
+/* click can be ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, or ClkRootWin */
+static const Button buttons[] = {
+        /* click                event mask           button          function        argument */
+        { ClkLtSymbol,          0,                   Button1,        setlayout,      {0} },
+        { ClkLtSymbol,          0,                   Button3,        setlayout,      {.v = &layouts[2]} },
+        { ClkWinTitle,          0,                   Button1,        togglewin,      {0} },
+        { ClkWinTitle,          0,                   Button3,        showhideclient, {0} },
+        { ClkWinTitle,          0,                   Button2,        zoom,           {0} },
+        { ClkStatusText,        0,                   Button1,        sigstatusbar,   {.i = 1 } },
+        { ClkStatusText,        0,                   Button2,        sigstatusbar,   {.i = 2 } },
+        { ClkStatusText,        0,                   Button3,        sigstatusbar,   {.i = 3 } },
+        { ClkClientWin,         MODKEY,              Button1,        movemouse,      {0} },
+        { ClkClientWin,         MODKEY,              Button2,        togglefloating, {0} },
+        { ClkClientWin,         MODKEY,              Button3,        resizemouse,    {0} },
+        { ClkTagBar,            0,                   Button1,        view,           {0} },
+        { ClkTagBar,            0,                   Button3,        toggleview,     {0} },
+        { ClkTagBar,            MODKEY,              Button1,        tag,            {0} },
+        { ClkTagBar,            MODKEY,              Button3,        toggletag,      {0} },
+};
+
+
+static const Key keys[] = {
+	/* modifier                     key            			function	argument */ 
+
+	{ MODKEY, 			XK_c,				spawn,		{.v = (const char*[]){ TERMINAL, "-e", "bc", "-l", NULL } } },  //Opens Calculator
+	{ MODKEY,			XK_Print,      			spawn,		SHCMD("flameshot gui") },	                                //Open Flameshot Screenshot Utility
+	{ MODKEY,                       XK_w, 	       			spawn,          SHCMD("firefox") },		                                //Open Firefox
+        { MODKEY,                       XK_g,                           spawn,          SHCMD("steam") },                                               //Open Valve Steam
+        { MODKEY,                       XK_y,          			spawn,          SHCMD("yubioath-desktop") },	                                //Open Yubico Authenticator
+        { MODKEY,                       XK_m,          			spawn,          SHCMD("prismlauncher") },		                        //Open Prism
+        { MODKEY,                       XK_k,                   	spawn,          SHCMD("keepassxc") },		                                //Open KeePassXC
+        { MODKEY,                       XK_d,                           spawn,          SHCMD("discord") },                                           	//Open Discord
+       	{ MODKEY,                       XK_t,                           spawn,          SHCMD("teams") },                                               //Open Microsoft Teams
+        { MODKEY,                       XK_o,                           spawn,          SHCMD("3cx") },                                                 //Open 3cx Phone System
+        { MODKEY,                       XK_s,                           spawn,          SHCMD("signal-desktop") },                                      //Open Signal
+	{ MODKEY,                       XK_p,	       			spawn,          {.v = dmenucmd } },		                                //Open Dmenu
+	{ MODKEY,             		XK_Return,     			spawn,          {.v = termcmd } },						//Open Terminal
+	{ MODKEY,                       XK_Insert,                      spawn,          SHCMD("bookmarks.sh") },					//Opens Dmenu with Bookmarks
+	{ MODKEY,	                XK_v,          			spawn,          SHCMD("clipmenu.sh") }, 					//Clipboard history
+	{ MODKEY,	                XK_Tab,     			zoom,           {0} },								//Swap Master with highest slave
+	{ MODKEY|ShiftMask,             XK_space,      			togglefloating,	{0} },								//Toggle focused window floating
+	{ MODKEY,		        XK_z,          			showhideclient, {0} },								//Toggle Minimise
+	{ MODKEY,                       XK_b,          			togglebar,      {0} },								//Toggle Menu Bar
+	{ MODKEY|ControlMask,           XK_Left,      			focusmon,       {.i = -1 } },							//Swap focus to monitor on the right
+	{ MODKEY|ControlMask,           XK_Right,      			focusmon,       {.i = +1 } },							//Swap focus to monitor on the left
+	{ MODKEY,	                XK_Right,      			focusstack,     {.i = -1 } },							//Swap focus to window on the left
+	{ MODKEY,	                XK_Left,      			focusstack,     {.i = +1 } },							//Swap focus to window on the right
+	{ MODKEY,                       XK_Up,         			incnmaster,     {.i = +1 } },			                                //Move highest slave to/from below master
+	{ MODKEY,                       XK_Down,       			incnmaster,     {.i = -1 } },			                                //Move highest slave to/from below master
+	{ Mod4Mask,                     XK_Right,      			setmfact,       {.f = -0.05} },							//Decrease master size 
+	{ Mod4Mask,                     XK_Left,      			setmfact,       {.f = +0.05} },							//Increase master size
+        { MODKEY,	                XK_q,          			killclient,     {0} },								//Kill focused window
+        { 0,	                        XF86XK_AudioStop,       	spawn,          {.v = (const char*[]){ "sysact", NULL } } },			//Power actions
+	{ MODKEY|ShiftMask,             XK_q,           		spawn,          {.v = (const char*[]){ "sysact", NULL } } },			//Power actions
+	{ ShiftMask|ControlMask,        XK_Escape,                      spawn,          {.v = (const char*[]){ TERMINAL, "-e", "bashtop", NULL } } },	//Open Bashtop
+        { MODKEY,                       XK_F9,          		spawn,          {.v = (const char*[]){ "dmenumount", NULL } } },		//Open dmenumount script
+        { MODKEY,		        XK_F10,         		spawn,          {.v = (const char*[]){ "dmenuumount", NULL } } },		//Open dmenuumount script
+	{ MODKEY,                       XK_F11,                         spawn,          SHCMD("camera.sh") },						//Open camera in window
+        { 0,	                        XF86XK_AudioPlay, 		spawn,     	SHCMD("cmus-remote -u") },					//Play/pause cmus
+        { MODKEY,                       XF86XK_AudioPlay,       	spawn,          SHCMD("playerctl --player=firefox play-pause") },		//Play/pause Firefox Media
+	{ 0,	                        XF86XK_AudioNext,       	spawn,          SHCMD("cmus-remote -n") },					//Skip cmus
+        { 0,	                        XF86XK_AudioPrev,       	spawn,          SHCMD("cmus-remote -r") },					//Previous cmus
+        { 0,                            XF86XK_AudioLowerVolume,	spawn,          SHCMD("cmus-remote -v -5%") },					//Lower volume cmus
+        { 0,                            XF86XK_AudioRaiseVolume,	spawn,          SHCMD("cmus-remote -v +5%") },					//Raise volume cmus
+	{ MODKEY,                       XK_F12,        			setlayout,      {0} },								//Toggle layouts
+	{ MODKEY,                       XK_0,          			view,           {.ui = ~0 } },							//Select all tags
+	{ MODKEY|ShiftMask,             XK_0,          			tag,            {.ui = ~0 } },							//Make focused window appear on all tags 
+	{ MODKEY|ShiftMask,             XK_Left,     			tagmon,         {.i = -1 } },							//Move focused window move to the right monitor
+	{ MODKEY|ShiftMask,             XK_Right,      			tagmon,         {.i = +1 } },							//Move focused window move to the left monitor
+        TAGKEYS(                        XK_1,           0)
+        TAGKEYS(                        XK_2,           1)
+        TAGKEYS(                        XK_3,           2)
+};
